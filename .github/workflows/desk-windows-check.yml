@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Release tag to verify (draft releases supported)
+        description: Release tag to verify
         required: true
         default: v0.3.0
         type: string
@@ -12,7 +12,8 @@ on:
         required: true
         type: string
 permissions:
-  contents: read
+  # Einmalige Nutzerfreigabe fuer den unveroeffentlichten Pruefkandidaten.
+  contents: write
 jobs:
   verify:
     runs-on: windows-2025
@@ -31,7 +32,8 @@ jobs:
           $folder = Join-Path $env:RUNNER_TEMP 'montice-desk-check'
           New-Item -ItemType Directory -Force $folder | Out-Null
           $exe = Join-Path $folder 'MonticeDesk.exe'
-          # Der Tag-Endpunkt liefert nur veroeffentlichte Releases. Entwuerfe ueber ihre ID lesen.
+          # Der Tag-Endpunkt liefert nur veroeffentlichte Releases. Ein Entwurf
+          # benoetigt zusaetzlich Push-Zugriff; Rechte nicht stillschweigend erweitern.
           $releasesJson = gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100"
           if ($LASTEXITCODE -ne 0) { throw 'Release lookup failed.' }
           $release = @($releasesJson | ConvertFrom-Json) | Where-Object tag_name -eq $env:RELEASE_TAG
