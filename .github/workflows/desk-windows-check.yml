@@ -30,9 +30,17 @@ jobs:
           if ($env:EXPECTED_SHA256 -notmatch '^[a-fA-F0-9]{64}$') { throw 'Invalid SHA-256.' }
           $folder = Join-Path $env:RUNNER_TEMP 'montice-desk-check'
           New-Item -ItemType Directory -Force $folder | Out-Null
-          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern MonticeDesk.exe --dir $folder
-          if ($LASTEXITCODE -ne 0) { throw 'Release download failed.' }
           $exe = Join-Path $folder 'MonticeDesk.exe'
+          # Der Tag-Endpunkt liefert nur veroeffentlichte Releases. Entwuerfe ueber ihre ID lesen.
+          $releasesJson = gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100"
+          if ($LASTEXITCODE -ne 0) { throw 'Release lookup failed.' }
+          $release = @($releasesJson | ConvertFrom-Json) | Where-Object tag_name -eq $env:RELEASE_TAG
+          if (@($release).Count -ne 1) { throw 'The prepared release was not found.' }
+          $asset = @($release.assets) | Where-Object name -eq 'MonticeDesk.exe'
+          if (@($asset).Count -ne 1) { throw 'The executable asset was not found.' }
+          if ($PSVersionTable.PSVersion -lt [version]'7.4') { throw 'Binary redirection requires PowerShell 7.4 or newer.' }
+          gh api -H 'Accept: application/octet-stream' "repos/$env:GITHUB_REPOSITORY/releases/assets/$($asset.id)" > $exe
+          if ($LASTEXITCODE -ne 0) { throw 'Release download failed.' }
           $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $exe).Hash.ToLowerInvariant()
           if ($actual -ne $env:EXPECTED_SHA256.ToLowerInvariant()) { throw 'Executable SHA-256 does not match.' }
           Write-Output "Verified executable SHA-256: $actual"
