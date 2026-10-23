@@ -5,7 +5,7 @@ on:
       release_tag:
         description: Release tag to verify
         required: true
-        default: v0.3.0
+        default: v0.4.0
         type: string
       sha256:
         description: Expected SHA-256 of MonticeDesk.exe
@@ -61,3 +61,23 @@ jobs:
           if ($process.ExitCode -ne 0) { throw "Native verification failed: $($process.ExitCode)" }
           $result = Get-Content -Raw -LiteralPath $report | ConvertFrom-Json
           if (-not $result.passed) { throw 'The native verification report did not confirm success.' }
+
+      - name: Verify native window layouts and stable timer refresh
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:RUNNER_TEMP 'montice-desk-check/MonticeDesk.exe'
+          $folder = Join-Path $env:RUNNER_TEMP 'montice-desk-ui'
+          $process = Start-Process -FilePath $exe -ArgumentList @('--verify-ui', ('"' + $folder + '"')) -PassThru
+          if (-not $process.WaitForExit(120000)) {
+            $process.Kill()
+            throw 'The isolated native UI verification timed out.'
+          }
+          Get-Content -LiteralPath (Join-Path $folder 'ui-report.json')
+          if ($process.ExitCode -ne 0) { throw 'Native UI verification failed.' }
+      - name: Preserve fictitious native UI verification images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desk-native-ui
+          path: ${{ runner.temp }}/montice-desk-ui/
+          if-no-files-found: warn
