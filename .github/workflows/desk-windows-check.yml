@@ -12,8 +12,7 @@ on:
         required: true
         type: string
 permissions:
-  # Einmalige Nutzerfreigabe fuer den unveroeffentlichten Pruefkandidaten.
-  contents: write
+  contents: read
 jobs:
   verify:
     runs-on: windows-2025
