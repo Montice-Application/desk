@@ -1,0 +1,54 @@
+name: Desk Windows verification
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to verify (draft releases supported)
+        required: true
+        default: v0.3.0
+        type: string
+      sha256:
+        description: Expected SHA-256 of MonticeDesk.exe
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - name: Download and verify the prepared executable
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          EXPECTED_SHA256: ${{ inputs.sha256 }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Invalid release tag.' }
+          if ($env:EXPECTED_SHA256 -notmatch '^[a-fA-F0-9]{64}$') { throw 'Invalid SHA-256.' }
+          $folder = Join-Path $env:RUNNER_TEMP 'montice-desk-check'
+          New-Item -ItemType Directory -Force $folder | Out-Null
+          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern MonticeDesk.exe --dir $folder
+          if ($LASTEXITCODE -ne 0) { throw 'Release download failed.' }
+          $exe = Join-Path $folder 'MonticeDesk.exe'
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $exe).Hash.ToLowerInvariant()
+          if ($actual -ne $env:EXPECTED_SHA256.ToLowerInvariant()) { throw 'Executable SHA-256 does not match.' }
+          Write-Output "Verified executable SHA-256: $actual"
+      - name: Verify native Schannel TLS and protected identity
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $folder = Join-Path $env:RUNNER_TEMP 'montice-desk-check'
+          $exe = Join-Path $folder 'MonticeDesk.exe'
+          $report = Join-Path $folder 'tls-report.json'
+          $process = Start-Process -FilePath $exe -ArgumentList @('--verify-tls', ('"' + $report + '"')) -PassThru
+          if (-not $process.WaitForExit(60000)) {
+            $process.Kill()
+            throw 'The isolated verification process timed out.'
+          }
+          if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report }
+          if ($process.ExitCode -ne 0) { throw "Native verification failed: $($process.ExitCode)" }
+          $result = Get-Content -Raw -LiteralPath $report | ConvertFrom-Json
+          if (-not $result.passed) { throw 'The native verification report did not confirm success.' }
