@@ -6,11 +6,13 @@ Montice Desk is the portable Windows companion to Montice on iPhone. The applica
 
 ## Downloads
 
-The latest release is [Montice Desk 0.4.0](https://github.com/Montice-Application/desk/releases/tag/v0.4.0). Public versions are provided under [Releases](https://github.com/Montice-Application/desk/releases). Download `MonticeDesk.exe`. The Windows x64 runtime is included; an installer is not required.
+Prepared versions are provided under [Releases](https://github.com/Montice-Application/desk/releases). Download `MonticeDesk.exe`. The Windows x64 runtime is included; an installer is not required.
 
 Close an existing Desk session before replacing the executable. Version 0.3.0 introduces update checks inside the application for later releases. The first version with this feature must be transferred once through the existing download or LocalSend route.
 
-Version 0.4.0 adds faster incremental synchronization, early read-only access during media transfers, progress on both devices and an adaptive monthly calendar. The new synchronization features require Montice 1.17.3 or later on iPhone; earlier compatible peers retain their existing transfer path.\n\n## Local work and pairing
+Version 0.5.0 introduces the redesigned assignment workspace: compact calendar, services grouped under their assignment, resizable areas and an expandable service view. The interface adapts to shorter and narrower windows. Additional iPhone-calculated summaries require Montice iOS 1.17.4 / build 112 or later; existing individual records remain available with the previous compatible iPhone version. The iPhone remains responsible for calculations.
+
+## Local work and pairing
 
 Settings, pairing, the local working copy, drafts and pending changes are stored separately from the executable in `%LOCALAPPDATA%/Montice Desk/`. Every full application restart requires approval in Montice on the iPhone. The companion interface requires Montice 1.17 or later.
 
